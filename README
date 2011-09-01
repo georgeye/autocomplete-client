@@ -1,10 +1,10 @@
 Auto complete client is an erlang client lib to communicate with auto complete server.
 
-the client lib runs in an erlang process, it is up to calling process to monitoring the healthness of this process.
+the client lib runs in an erlang process, it is up to calling process to monitor the healthiness of this process.
 
-Two method to start the client lib
+There are two methods to start the client lib
 
-1. initClient(ServerName, Port, Pid) which auto spawns out a process for the client lib
+1. initClient(ServerName, Port, Pid) which auto spawns out a process for the client lib, a spawned process id is returned
 for example autocomplete_clt:initClient(localhost, 5050, self())
 
 2. start(ServerName, Port, Pid)
@@ -16,7 +16,7 @@ Add: for example {add, "gye", "gye@tigertext.com", "request1"}
 Remove: for example {remove, "gye", "request1"}
 Search: for example {search, "gye", "request2"}
 
-On Search request, the calling process is expect to receive message of {search, RequestId, ResponseList}
+On Search request, the calling process is expect to receive response in format of {search, RequestId, ResultList}
 for example: {search, req3, [<<"gye@tigertext.com">>]}.
 Since all the operation is asynchronous, it is upto the calling process to setup a timer while waiting for response of search request.
 
