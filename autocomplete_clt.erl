@@ -19,7 +19,7 @@ start(ServerName, Port, Pid) ->
         loop(ServerName, Port, Socket, Pid, []);
      Other ->
         io:format("failed to connect to host=~p at port:~p\n", [ServerName, Port]),     
-        {connection_failed, Other}  
+        Pid ! {connection_failed, Other}  
    end.
 
 
