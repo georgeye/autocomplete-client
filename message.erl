@@ -2,10 +2,10 @@
 -export([parse/1,convertToList/1,getRequestId/1]).
 
 parse(Data) ->
-  %io:format("data received:~p\n", [Data]),
+  %io:format("data to parse length=:~p\n", [string:len(Data)]),
   if 
      Data == [] ->
-       more_read;
+       {more_read, Data};
      Data /= [] ->  
        Index = string:str(Data, "\r\n\r\n"),
        if
@@ -14,8 +14,16 @@ parse(Data) ->
                {ok, RequestId, Payload, Remaining} ->
                  {ok, RequestId, convertToList(Payload), Remaining};
                more_read ->
-                 more_read;
+                 {more_read, Data};
                error ->
+                 error
+            end; 
+          Index == 0 ->
+            TotalLen = string:len(Data),
+            if
+               TotalLen < 300 ->
+                 {more_read, Data};
+               TotalLen >= 300 -> %% header cannot be that long
                  error
             end     
        end
@@ -27,7 +35,7 @@ parseHP(Data, Index) ->
   %io:format("header is:~p\n", [H]),
   CL = getContentLength(H),
   ReqId = getRequestId(H),
-  io:format("ReqId=~p\n", [ReqId]),
+  %io:format("ReqId=~p\n", [ReqId]),
   Total = string:len(Data),
   %io:format("total=~p, Index=~p contentLength=~p\n", [Total,Index, CL]),
   if 
@@ -36,6 +44,7 @@ parseHP(Data, Index) ->
           Total >= (Index - 1 + 4 + CL) ->
             {ok, ReqId, string:substr(Data, Index+4, CL), string:substr(Data, Index+4+CL)};
           Total < (Index -1 + 4 + CL) -> % need more reading
+            %io:format("content is not received yet, read more\n"),
             more_read
         end;
      CL == 0 ->
@@ -65,12 +74,13 @@ getContentLength(Hs) ->
 
 getLengthFromHeader(H) ->
    Index = string:str(H, "Content-Length"),
+   SubStr = string:sub_string(H, Index),
    if 
      Index > 0 ->  % find header with requestId 
-        Pos = string:str(H, ":"),
+        Pos = string:str(SubStr, ":"),
         if
           Pos > 0 ->
-             list_to_integer(string:sub_string(H, Pos+1));
+             list_to_integer(string:sub_string(SubStr, Pos+1));
           Pos == 0 ->
              0
         end;
@@ -115,9 +125,11 @@ getReqFromHeader(H) ->
    end.
 
 convertToList(Jdata) ->
+  %io:format("Json data:~p\n", [Jdata]),
   Term = json_eep:json_to_term(Jdata),
   {Items} = Term,
   Values = getValueList(Items),
+  %io:format("values:~p\n", [Values]),
   getRealValue(Values, []).
 
 getRealValue([], Sum) ->
@@ -140,13 +152,9 @@ getRealValue([H|T], Sum) ->
 getValueFromItem([]) ->
   [];
 getValueFromItem([H|T]) ->
-  {Key, Value} = H,
-  case Key of
-     <<"value">> ->
-       Value;
-     _ -> 
-       getValueFromItem(T)
-  end.   
+  {_, Value} = H,
+  [{_, Value1}] = T,
+  {Value, Value1}.
 
 getValueList([]) ->
   [];
