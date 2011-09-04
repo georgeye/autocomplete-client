@@ -38,9 +38,10 @@ loop(ServerName, Port, Socket, Pid, SoFar) ->
        search(Key, RequestId, Socket),
        loop(ServerName, Port, Socket, Pid, SoFar);
      {tcp, Socket, Bin} ->
-        case processResponse(Pid, [SoFar|binary_to_list(Bin)]) of
-            more_read ->
-              loop(ServerName, Port, Socket, Pid, [SoFar| binary_to_list(Bin)]);
+        %io:format("socket received length:~p\n", [size(Bin)]), 
+        case processResponse(Pid, lists:append([SoFar, binary_to_list(Bin)])) of
+            {more_read, Buffer} ->
+              loop(ServerName, Port, Socket, Pid, Buffer);
             Other -> 
               {error, Other}
         end;      
@@ -76,11 +77,11 @@ loop(ServerName, Port, Socket, Pid, SoFar) ->
   processResponse(Pid, Resp) ->  
      case message:parse(Resp) of
        {ok, RequestId, Payload, Remaining} -> 
-         io:format("send response back to pid:~p, resp:~p\n", [Pid, Payload]),
+         %io:format("send response back to pid:~p, resp:~p\n", [Pid, Payload]),
          Pid ! {search, RequestId, Payload},
          processResponse(Pid, Remaining);
-       more_read ->
-         more_read;        
+       {more_read, Buffer} ->
+         {more_read, Buffer};        
        Other -> 
          Other 
      end.     
